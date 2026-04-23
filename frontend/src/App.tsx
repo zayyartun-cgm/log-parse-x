@@ -779,7 +779,7 @@ function HumanReadableAnalysisPanel({ dataset, analytics }: { dataset: Dataset |
     <section className="panel analysisPanel">
       <div className="panelHeader">
         <BarChart3 size={18} />
-        <h2>Human Readable Analysis</h2>
+        <h2>Analysis</h2>
       </div>
       {dataset ? <p className="analysisCopy">{analysis}</p> : <p className="empty">Select a dataset to see an analysis.</p>}
     </section>
