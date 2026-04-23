@@ -6,6 +6,7 @@ import {
   BarChart3,
   Database,
   FileUp,
+  Info,
   LayoutDashboard,
   Pencil,
   PlusCircle,
@@ -404,9 +405,21 @@ function DashboardPage({
         ) : null}
 
         <div className="grid two">
-          <ChartPanel title="Severity" data={analytics?.severity_counts ?? []} barKey="value" />
-          <ChartPanel title="Status" data={analytics?.status_counts ?? []} barKey="value" />
+          <ChartPanel
+            title="Severity"
+            helpText="Shows how many parsed records fall into each severity level so you can quickly spot warning, error, and alarm-heavy datasets."
+            data={analytics?.severity_counts ?? []}
+            barKey="value"
+          />
+          <ChartPanel
+            title="Status"
+            helpText="Shows how many records were mapped into each status or state, which helps you see the overall operating pattern of the dataset."
+            data={analytics?.status_counts ?? []}
+            barKey="value"
+          />
         </div>
+
+        <DatasetSummaryPanel dataset={activeDataset} analytics={analytics} />
 
         <section className="panel">
           <div className="panelHeader spread">
@@ -717,12 +730,30 @@ function Stats({ dataset, analytics }: { dataset: Dataset | null; analytics?: An
   );
 }
 
-function ChartPanel({ title, data, barKey }: { title: string; data: { name: string; value: number }[]; barKey: string }) {
+function ChartPanel({
+  title,
+  helpText,
+  data,
+  barKey
+}: {
+  title: string;
+  helpText: string;
+  data: { name: string; value: number }[];
+  barKey: string;
+}) {
   return (
     <section className="panel">
       <div className="panelHeader">
         <BarChart3 size={18} />
         <h2>{title}</h2>
+        <div className="infoHint">
+          <button type="button" className="infoButton" aria-label={`${title} chart summary`}>
+            <Info size={14} />
+          </button>
+          <div className="tooltipCard" role="tooltip">
+            {helpText}
+          </div>
+        </div>
       </div>
       <div className="chart">
         <ResponsiveContainer width="100%" height="100%">
@@ -735,6 +766,60 @@ function ChartPanel({ title, data, barKey }: { title: string; data: { name: stri
           </BarChart>
         </ResponsiveContainer>
       </div>
+    </section>
+  );
+}
+
+function DatasetSummaryPanel({ dataset, analytics }: { dataset: Dataset | null; analytics?: Analytics }) {
+  const topSeverity = analytics?.severity_counts?.[0];
+  const topStatus = analytics?.status_counts?.[0];
+  const topTool = analytics?.tool_counts?.find((item) => item.name !== "UNKNOWN") ?? analytics?.tool_counts?.[0];
+  const timelinePoints = analytics?.timeline?.length ?? 0;
+  const createdAt = dataset?.created_at ? new Date(dataset.created_at).toLocaleString() : null;
+
+  return (
+    <section className="panel summaryPanel">
+      <div className="panelHeader">
+        <Database size={18} />
+        <h2>Dataset Summary</h2>
+      </div>
+      {dataset ? (
+        <div className="summaryGrid">
+          <div className="summaryIntro">
+            <strong>{dataset.file_name}</strong>
+            <p>
+              This dataset was parsed as {dataset.detected_format} with {dataset.record_count} records and
+              a confidence score of {Math.round(dataset.confidence * 100)}%.
+            </p>
+          </div>
+          <div className="summaryFacts">
+            <div className="summaryFact">
+              <span>Most common severity</span>
+              <strong>{topSeverity ? `${topSeverity.name} (${topSeverity.value})` : "No severity values found"}</strong>
+            </div>
+            <div className="summaryFact">
+              <span>Most common status</span>
+              <strong>{topStatus ? `${topStatus.name} (${topStatus.value})` : "No status values found"}</strong>
+            </div>
+            <div className="summaryFact">
+              <span>Primary tool</span>
+              <strong>{topTool ? `${topTool.name} (${topTool.value})` : "No tool IDs found"}</strong>
+            </div>
+            <div className="summaryFact">
+              <span>Coverage</span>
+              <strong>
+                {String(analytics?.totals?.unknownFieldCount ?? 0)} unknown field types across {timelinePoints} timeline buckets
+              </strong>
+            </div>
+          </div>
+          <p className="muted summaryMeta">
+            {createdAt ? `Uploaded ${createdAt}. ` : ""}
+            Use the explorer below to inspect individual records and the charts above to compare distribution across the dataset.
+          </p>
+        </div>
+      ) : (
+        <p className="empty">Select a dataset to see a summary.</p>
+      )}
     </section>
   );
 }
