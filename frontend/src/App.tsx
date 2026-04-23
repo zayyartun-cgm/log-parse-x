@@ -419,6 +419,8 @@ function DashboardPage({
           />
         </div>
 
+        <HumanReadableAnalysisPanel dataset={activeDataset} analytics={analytics} />
+
         <DatasetSummaryPanel dataset={activeDataset} analytics={analytics} />
 
         <section className="panel">
@@ -770,6 +772,20 @@ function ChartPanel({
   );
 }
 
+function HumanReadableAnalysisPanel({ dataset, analytics }: { dataset: Dataset | null; analytics?: Analytics }) {
+  const analysis = buildHumanReadableAnalysis(dataset, analytics);
+
+  return (
+    <section className="panel analysisPanel">
+      <div className="panelHeader">
+        <BarChart3 size={18} />
+        <h2>Human Readable Analysis</h2>
+      </div>
+      {dataset ? <p className="analysisCopy">{analysis}</p> : <p className="empty">Select a dataset to see an analysis.</p>}
+    </section>
+  );
+}
+
 function DatasetSummaryPanel({ dataset, analytics }: { dataset: Dataset | null; analytics?: Analytics }) {
   const topSeverity = analytics?.severity_counts?.[0];
   const topStatus = analytics?.status_counts?.[0];
@@ -822,6 +838,41 @@ function DatasetSummaryPanel({ dataset, analytics }: { dataset: Dataset | null; 
       )}
     </section>
   );
+}
+
+function buildHumanReadableAnalysis(dataset: Dataset | null, analytics?: Analytics) {
+  if (!dataset) return "";
+
+  const recordCount = dataset.record_count;
+  const confidence = Math.round(dataset.confidence * 100);
+  const topSeverity = analytics?.severity_counts?.[0];
+  const topStatus = analytics?.status_counts?.[0];
+  const topTool = analytics?.tool_counts?.find((item) => item.name !== "UNKNOWN") ?? analytics?.tool_counts?.[0];
+  const unknownFieldCount = Number(analytics?.totals?.unknownFieldCount ?? 0);
+  const metricCount = analytics?.metric_ranges?.length ?? 0;
+  const timelineBuckets = analytics?.timeline?.length ?? 0;
+  const warningCount =
+    (analytics?.severity_counts ?? [])
+      .filter((item) => ["WARN", "WARNING", "ERROR", "CRITICAL", "ALARM"].includes(item.name.toUpperCase()))
+      .reduce((sum, item) => sum + item.value, 0) ?? 0;
+  const warningShare = recordCount > 0 ? Math.round((warningCount / recordCount) * 100) : 0;
+
+  const parts = [
+    `${dataset.file_name} was parsed as ${dataset.detected_format} with ${recordCount} records at ${confidence}% confidence.`,
+    topTool ? `Most activity is associated with ${topTool.name}, which appears in ${topTool.value} records.` : null,
+    topStatus ? `The dominant status is ${topStatus.name} with ${topStatus.value} occurrences.` : "No clear status pattern was detected.",
+    topSeverity
+      ? `The leading severity is ${topSeverity.name} with ${topSeverity.value} records, and ${warningShare}% of all records fall into warn-or-higher severities.`
+      : "No severity distribution was identified in the current dataset.",
+    metricCount > 0
+      ? `${metricCount} metric series and ${timelineBuckets} timeline buckets were derived, which suggests the dataset is structured enough for trend analysis.`
+      : "Very few structured metrics were extracted, so this dataset may rely more on raw text than numeric telemetry.",
+    unknownFieldCount > 0
+      ? `${unknownFieldCount} unknown field types are still being preserved, so there is room to improve mappings and make future parses richer.`
+      : "There are no unknown field types in this dataset, which suggests the current mappings already cover it well."
+  ].filter(Boolean);
+
+  return parts.join(" ");
 }
 
 function RecordTable({ records }: { records: LogRecord[] }) {

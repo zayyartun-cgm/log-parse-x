@@ -333,6 +333,18 @@ h2 {
   gap: 12px;
 }
 
+.analysisPanel {
+  display: grid;
+  gap: 8px;
+}
+
+.analysisCopy {
+  margin-bottom: 0;
+  color: #344542;
+  font-size: 0.98rem;
+  line-height: 1.65;
+}
+
 .summaryGrid {
   display: grid;
   gap: 14px;
